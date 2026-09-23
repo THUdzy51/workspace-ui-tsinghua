@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light">
+  <title>个人工作空间</title>
+  <link rel="stylesheet" href="styles.css?v=20260913-todo-expanded">
+</head>
+<body>
+  <aside class="sidebar">
+    <div class="brand">
+      <div class="university-lockup"><img src="assets/tsinghua-university-logo.png" alt="清华大学 Tsinghua University"></div>
+      <div class="product-name"><strong>个人工作空间</strong><small>日程与专注管理</small></div>
+    </div>
+    <nav aria-label="主导航">
+      <button class="nav-item active" data-page="overview">个人工作空间</button>
+    </nav>
+    <div class="sidebar-foot"><span class="status-dot"></span><span>仅监听本机</span><small id="server-time">正在连接…</small></div>
+  </aside>
+
+  <main>
+    <header class="topbar">
+      <button class="menu-button" aria-label="打开导航">☰</button>
+      <div><p class="eyebrow" id="page-kicker">RESEARCH DESK</p><h1 id="page-title">工作台</h1></div>
+      <div class="header-date"><strong id="header-gregorian"></strong><span id="header-lunar"></span><span id="header-weather">深圳 · 天气读取中…</span></div>
+    </header>
+
+    <section class="page active" id="page-overview">
+      <div class="calendar-utility"><button class="secondary" id="calendar-today">回到今天</button></div>
+      <div class="calendar-layout">
+        <article class="calendar-panel">
+          <div class="calendar-toolbar"><button id="month-prev" aria-label="上个月">←</button><h3 id="calendar-month">—</h3><button id="month-next" aria-label="下个月">→</button></div>
+          <div class="calendar-week"><span>一</span><span>二</span><span>三</span><span>四</span><span>五</span><span>六</span><span>日</span></div>
+          <div class="calendar-grid" id="calendar-grid"></div>
+        </article>
+        <aside class="agenda-panel">
+          <div class="agenda-switch"><button class="active" type="button" data-agenda-view="todos">今日待办</button><button type="button" data-agenda-view="schedule">日程提醒</button></div>
+          <section class="todo-section agenda-view active" id="todo-view"><div class="panel-title"><h3>今日待办 <small id="todo-date"></small></h3><span id="todo-progress" class="quiet"></span></div><form id="todo-form" class="todo-form" autocomplete="off"><input id="todo-title" name="todo-entry" maxlength="120" placeholder="安排选中日期要完成的工作" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" required><button class="primary" type="submit">添加</button></form><div id="todo-list" class="todo-list"></div></section>
+          <section class="schedule-view agenda-view" id="schedule-view"><div><h3 id="agenda-date">—</h3></div><form id="schedule-form" autocomplete="off"><label><span>时间</span><input id="schedule-time" name="schedule-time" type="time" value="09:00" autocomplete="off"></label><label><span>日程内容</span><input id="schedule-title" name="schedule-entry" maxlength="120" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" required></label><button class="primary full" type="submit">添加日程</button></form><div class="agenda-list" id="agenda-list"></div></section>
+        </aside>
+      </div>
+      <div class="workbench-split">
+      <section class="daily-banner" id="daily-banner" aria-label="每日背景"><span id="bing-banner-title" class="sr-only"></span><span id="bing-banner-credit" class="sr-only"></span></section>
+      <section class="hydration-panel">
+        <div class="hydration-head">
+          <h3>补水站</h3>
+          <form id="water-goal-form" class="hidden"><label><span class="sr-only">饮水目标</span><span class="goal-input"><input id="water-goal" aria-label="饮水目标（毫升）" type="number" min="100" max="10000" step="100" value="2000"><b>ml</b></span></label><button class="secondary" type="submit">修改</button></form>
+        </div>
+        <div class="hydration-body">
+          <div class="cup-stage" aria-label="饮水完成进度">
+            <button class="water-cup" id="water-cup" type="button" aria-label="点击水瓶修改每日饮水目标"><div class="water-liquid" id="water-liquid"><span></span><span></span><span></span></div><div class="cup-value"><strong id="water-amount">0</strong><small>ml</small></div></button>
+            <div class="water-percent" id="water-percent">0% COMPLETED</div>
+          </div>
+          <div class="hydration-controls">
+            <div class="water-metrics"><div class="water-goal-metric"><span>目标摄入</span><strong><b id="water-target">2,000</b> ml</strong></div><div><span>还需饮水</span><strong><b id="water-remaining">2,000</b> ml</strong></div></div>
+            <div class="quick-water"><p>快捷记录</p><button data-water="100"><span>＋</span>100 ml</button><button data-water="300"><span>＋</span>300 ml</button></div>
+            <button class="water-reset" id="water-reset">重置今日饮水</button>
+          </div>
+        </div>
+      </section>
+      </div>
+    </section>
+
+  </main>
+  <div id="toast" role="status" aria-live="polite"></div>
+  <script src="app.js?v=20260913-all-dots"></script>
+</body>
+</html>

@@ -1,0 +1,8 @@
+__pycache__/
+*.py[cod]
+user_data/
+runs/
+assets/bing_daily/
+*.log
+.DS_Store
+Thumbs.db
