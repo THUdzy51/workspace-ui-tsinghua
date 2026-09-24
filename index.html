@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="color-scheme" content="light">
   <title>个人工作空间</title>
-  <link rel="stylesheet" href="styles.css?v=20260913-todo-expanded">
+  <link rel="stylesheet" href="styles.css?v=20260924-vocabulary-fortune">
 </head>
 <body>
   <aside class="sidebar">
@@ -28,6 +28,7 @@
 
     <section class="page active" id="page-overview">
       <div class="calendar-utility"><button class="secondary" id="calendar-today">回到今天</button></div>
+      <div class="calendar-word-grid">
       <div class="calendar-layout">
         <article class="calendar-panel">
           <div class="calendar-toolbar"><button id="month-prev" aria-label="上个月">←</button><h3 id="calendar-month">—</h3><button id="month-next" aria-label="下个月">→</button></div>
@@ -39,6 +40,14 @@
           <section class="todo-section agenda-view active" id="todo-view"><div class="panel-title"><h3>今日待办 <small id="todo-date"></small></h3><span id="todo-progress" class="quiet"></span></div><form id="todo-form" class="todo-form" autocomplete="off"><input id="todo-title" name="todo-entry" maxlength="120" placeholder="安排选中日期要完成的工作" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" required><button class="primary" type="submit">添加</button></form><div id="todo-list" class="todo-list"></div></section>
           <section class="schedule-view agenda-view" id="schedule-view"><div><h3 id="agenda-date">—</h3></div><form id="schedule-form" autocomplete="off"><label><span>时间</span><input id="schedule-time" name="schedule-time" type="time" value="09:00" autocomplete="off"></label><label><span>日程内容</span><input id="schedule-title" name="schedule-entry" maxlength="120" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" required></label><button class="primary full" type="submit">添加日程</button></form><div class="agenda-list" id="agenda-list"></div></section>
         </aside>
+      </div>
+      <aside class="vocabulary-panel focus-card" aria-label="背单词">
+        <div class="focus-card-head"><select id="word-book" aria-label="切换词书"><option value="academic">学术英语 · 897</option><option value="ngsl">核心英语 NGSL · 2,809</option><option value="ielts">IELTS 练习词表 · 2,644</option></select></div>
+        <div class="word-content"><strong id="daily-word">读取中…</strong><span id="word-phonetic"></span><p id="word-meaning"></p></div>
+        <blockquote id="word-example"></blockquote>
+        <div class="word-book-progress"><div class="word-progress-track" role="progressbar" aria-label="词书掌握进度" aria-valuemin="0" aria-valuemax="897" aria-valuenow="0"><i id="word-progress-fill"></i></div><span id="word-progress-count" class="word-progress-count">0 / 897</span></div>
+        <div class="word-actions"><button id="word-next" type="button">换一个</button><button id="word-known" type="button">已掌握</button></div>
+      </aside>
       </div>
       <div class="workbench-split">
       <section class="daily-banner" id="daily-banner" aria-label="每日背景"><span id="bing-banner-title" class="sr-only"></span><span id="bing-banner-credit" class="sr-only"></span></section>
@@ -59,11 +68,17 @@
           </div>
         </div>
       </section>
+      <section class="fortune-panel focus-card" aria-label="金牛座今日运势">
+        <div class="fortune-sign">♉</div><h3>金牛座今日运势</h3><div class="fortune-stars" id="fortune-stars">★★★★☆</div>
+        <p class="fortune-summary" id="fortune-summary"></p>
+        <div class="fortune-details"><div><span>今日适合</span><strong id="fortune-suitable"></strong></div><div><span>幸运颜色</span><strong class="fortune-color"><i id="fortune-color-dot"></i><b id="fortune-color"></b></strong></div><div><span>幸运数字</span><strong id="fortune-number"></strong></div></div>
+        <p class="fortune-tip" id="fortune-tip"></p>
+      </section>
       </div>
     </section>
 
   </main>
   <div id="toast" role="status" aria-live="polite"></div>
-  <script src="app.js?v=20260913-all-dots"></script>
+  <script src="app.js?v=20260924-vocabulary-fortune"></script>
 </body>
 </html>

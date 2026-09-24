@@ -6,6 +6,10 @@ This public archive is independent from the original literature knowledge base. 
 
 ## Features
 
+- Three offline wordbooks with independent mastery progress: Academic English (897), NGSL (2,809), and an IELTS practice collection (2,644)
+- Random next-word selection without immediate repetition
+- A date-stable Taurus daily-fortune card with activity, color, and number prompts
+
 - Monthly calendar with separate schedule and to-do indicators
 - Date-specific to-do lists with completion tracking
 - Timed schedule reminders
