@@ -83,6 +83,11 @@ $$('[data-water]').forEach(button=>button.onclick=()=>updateHydration({action:'a
 $('#water-reset').onclick=()=>updateHydration({action:'reset'});
 $('#water-cup').onclick=async()=>{const current=state.hydration?.goal_ml||2000;const value=window.prompt('设置每日饮水目标（100–10000 ml）',String(current));if(value===null)return;const goal=Math.round(Number(value));if(!Number.isFinite(goal)||goal<100||goal>10000){toast('目标需为 100–10000 ml 之间的数字');return}await updateHydration({action:'set_goal',goal_ml:goal})};
 
+const FISH_OIL_STORE='personal-workspace-fish-oil-v1';
+function readFishOil(){try{return JSON.parse(localStorage.getItem(FISH_OIL_STORE))||{}}catch{return {}}}
+function renderFishOil(){const button=$('#fish-oil-check');if(!button)return;const done=readFishOil()[dateKey(new Date())]===true;button.classList.toggle('done',done);button.setAttribute('aria-pressed',String(done));button.setAttribute('aria-label',done?'今日鱼油已服用，点击取消打卡':'今日鱼油尚未服用，点击打卡');button.querySelector('.fish-oil-label').textContent=done?'今日已完成':'每日鱼油'}
+$('#fish-oil-check').onclick=()=>{const records=readFishOil(),today=dateKey(new Date());records[today]=records[today]!==true;localStorage.setItem(FISH_OIL_STORE,JSON.stringify(records));renderFishOil()};
+
 const WORD_BOOK_FILES={academic:'assets/wordbooks/academic.json',ngsl:'assets/wordbooks/ngsl.json',ielts:'assets/wordbooks/ielts.json'};
 const WORD_BOOKS={};
 const WORD_STORE='personal-workspace-vocabulary-v1';
@@ -106,5 +111,5 @@ function renderFortune(){const key=dateKey(new Date()).replaceAll('-',''),index=
 
 function renderHeader(){const now=new Date();$('#page-kicker').textContent='';$('#page-title').textContent='个人工作空间';$('#header-gregorian').textContent=now.toLocaleDateString('zh-CN',{year:'numeric',month:'long',day:'numeric'});$('#header-lunar').textContent=new Intl.DateTimeFormat('zh-CN-u-ca-chinese',{dateStyle:'long'}).format(now)+' · '+now.toLocaleDateString('zh-CN',{weekday:'long'});$('#server-time').textContent='本地 UI · 独立运行'}
 
-async function initialize(){renderHeader();initVocabulary();renderFortune();state.viewMonth=new Date(new Date().getFullYear(),new Date().getMonth(),1);const [schedule,todos,hydration]=await Promise.all([api('/api/schedule'),api('/api/todos'),api('/api/hydration')]);state.events=schedule.events||[];state.todos=todos.items||[];renderHydration(hydration);renderCalendar();loadBingBackground();loadWeather()}
+async function initialize(){renderHeader();initVocabulary();renderFortune();renderFishOil();setInterval(renderFishOil,60000);state.viewMonth=new Date(new Date().getFullYear(),new Date().getMonth(),1);const [schedule,todos,hydration]=await Promise.all([api('/api/schedule'),api('/api/todos'),api('/api/hydration')]);state.events=schedule.events||[];state.todos=todos.items||[];renderHydration(hydration);renderCalendar();loadBingBackground();loadWeather()}
 initialize().catch(error=>toast(`数据读取失败：${error.message}`));
