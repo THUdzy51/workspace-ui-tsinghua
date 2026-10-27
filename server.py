@@ -6,12 +6,12 @@ import argparse
 import json
 import threading
 import uuid
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 from http import HTTPStatus
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from typing import Any
-from urllib.parse import urlparse
+from urllib.parse import urlencode, urlparse
 from urllib.request import Request, urlopen
 
 
@@ -21,6 +21,7 @@ SCHEDULE_PATH = USER_DATA / "schedule.json"
 TODO_PATH = USER_DATA / "todos.json"
 HYDRATION_PATH = USER_DATA / "hydration.json"
 BING_CACHE = ROOT / "assets" / "bing_daily"
+GITHUB_CACHE = ROOT / "assets" / "github_weekly"
 DATA_LOCK = threading.Lock()
 
 
@@ -36,6 +37,43 @@ def write_json(path: Path, payload: Any) -> None:
     temporary = path.with_suffix(path.suffix + ".tmp")
     temporary.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
     temporary.replace(path)
+
+
+def github_weekly_payload() -> dict[str, Any]:
+    """Return popular public repositories created in the last seven days."""
+    today = date.today()
+    cache_path = GITHUB_CACHE / f"github-weekly-{today.isoformat()}.json"
+    cached = read_json(cache_path, None)
+    if isinstance(cached, dict) and cached.get("items"):
+        return cached
+    since = (today - timedelta(days=6)).isoformat()
+    query = urlencode({"q": f"created:>={since} stars:>5", "sort": "stars", "order": "desc", "per_page": 12})
+    try:
+        request = Request(f"https://api.github.com/search/repositories?{query}", headers={"Accept": "application/vnd.github+json", "User-Agent": "Portable-Workspace/1.0", "X-GitHub-Api-Version": "2022-11-28"})
+        with urlopen(request, timeout=8) as response:
+            raw = json.loads(response.read().decode("utf-8"))
+        items = [{
+            "name": item.get("name", ""), "full_name": item.get("full_name", ""),
+            "description": item.get("description") or "这个项目暂时没有简介。",
+            "url": item.get("html_url", ""), "language": item.get("language") or "多语言",
+            "stars": int(item.get("stargazers_count", 0) or 0), "forks": int(item.get("forks_count", 0) or 0),
+            "owner": (item.get("owner") or {}).get("login", ""),
+        } for item in (raw.get("items") or []) if item.get("html_url")]
+        if not items:
+            raise ValueError("GitHub returned no repositories")
+        payload = {"day": today.isoformat(), "since": since, "source": "github", "items": items}
+        GITHUB_CACHE.mkdir(parents=True, exist_ok=True)
+        write_json(cache_path, payload)
+        for old_path in GITHUB_CACHE.glob("github-weekly-*.json"):
+            if old_path != cache_path:
+                old_path.unlink(missing_ok=True)
+        return payload
+    except Exception:
+        previous = sorted(GITHUB_CACHE.glob("github-weekly-*.json"), reverse=True) if GITHUB_CACHE.exists() else []
+        fallback = read_json(previous[0], None) if previous else None
+        if isinstance(fallback, dict) and fallback.get("items"):
+            return {**fallback, "source": "cache"}
+        return {"day": today.isoformat(), "since": since, "source": "unavailable", "items": []}
 
 
 def schedule_payload() -> dict[str, Any]:
@@ -157,6 +195,7 @@ class Handler(SimpleHTTPRequestHandler):
             "/api/hydration": hydration_payload,
             "/api/bing-background": bing_background_payload,
             "/api/weather": weather_payload,
+            "/api/github-weekly": github_weekly_payload,
         }
         if path in routes:
             self.send_json(routes[path]())

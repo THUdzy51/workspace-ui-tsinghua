@@ -41,12 +41,12 @@
           <section class="schedule-view agenda-view" id="schedule-view"><div><h3 id="agenda-date">—</h3></div><form id="schedule-form" autocomplete="off"><label><span>时间</span><input id="schedule-time" name="schedule-time" type="time" value="09:00" autocomplete="off"></label><label><span>日程内容</span><input id="schedule-title" name="schedule-entry" maxlength="120" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" required></label><button class="primary full" type="submit">添加日程</button></form><div class="agenda-list" id="agenda-list"></div></section>
         </aside>
       </div>
-      <aside class="vocabulary-panel focus-card" aria-label="背单词">
-        <div class="focus-card-head"><select id="word-book" aria-label="切换词书"><option value="academic">学术英语 · 897</option><option value="ngsl">核心英语 NGSL · 2,809</option><option value="ielts">IELTS 练习词表 · 2,644</option></select></div>
-        <div class="word-content"><strong id="daily-word">读取中…</strong><span id="word-phonetic"></span><p id="word-meaning"></p></div>
-        <blockquote id="word-example"></blockquote>
-        <div class="word-book-progress"><div class="word-progress-track" role="progressbar" aria-label="词书掌握进度" aria-valuemin="0" aria-valuemax="897" aria-valuenow="0"><i id="word-progress-fill"></i></div><span id="word-progress-count" class="word-progress-count">0 / 897</span></div>
-        <div class="word-actions"><button id="word-next" type="button">换一个</button><button id="word-known" type="button">已掌握</button></div>
+      <aside class="github-weekly-panel focus-card" aria-label="GitHub 本周热点">
+        <header class="github-weekly-head"><div><span>GITHUB WEEKLY</span><h3>本周热点</h3></div><div class="github-weekly-nav"><button id="github-prev" type="button" aria-label="上一个项目">←</button><button id="github-next" type="button" aria-label="下一个项目">→</button></div></header>
+        <div class="github-rank" id="github-rank">01 / 00</div><a class="github-repo-name" id="github-repo-link" href="https://github.com" target="_blank" rel="noreferrer"><strong id="github-repo-name">正在读取…</strong><span>↗</span></a>
+        <p class="github-description" id="github-description">正在连接 GitHub，获取近七天的热门新项目。</p>
+        <div class="github-meta"><span id="github-language">—</span><span>★ <b id="github-stars">0</b></span><span>⑂ <b id="github-forks">0</b></span></div>
+        <div class="github-roll"><i id="github-roll-progress"></i></div><p class="github-source" id="github-source">每日自动更新</p>
       </aside>
       </div>
       <div class="workbench-split">
@@ -69,17 +69,18 @@
           </div>
         </div>
       </section>
-      <section class="fortune-panel focus-card" aria-label="金牛座今日运势">
-        <div class="fortune-sign">♉</div><h3>金牛座今日运势</h3><div class="fortune-stars" id="fortune-stars">★★★★☆</div>
-        <p class="fortune-summary" id="fortune-summary"></p>
-        <div class="fortune-details"><div><span>今日适合</span><strong id="fortune-suitable"></strong></div><div><span>幸运颜色</span><strong class="fortune-color"><i id="fortune-color-dot"></i><b id="fortune-color"></b></strong></div><div><span>幸运数字</span><strong id="fortune-number"></strong></div></div>
-        <p class="fortune-tip" id="fortune-tip"></p>
+      <section class="vocabulary-panel vocabulary-compact focus-card" aria-label="背单词">
+        <div class="focus-card-head"><select id="word-book" aria-label="切换词书"><option value="academic">学术英语 · 897</option><option value="ngsl">核心英语 NGSL · 2,809</option><option value="ielts">IELTS 练习词表 · 2,644</option></select></div>
+        <div class="word-content"><strong id="daily-word">读取中…</strong><span id="word-phonetic"></span><p id="word-meaning"></p></div>
+        <blockquote id="word-example"></blockquote>
+        <div class="word-book-progress"><div class="word-progress-track" role="progressbar" aria-label="词书掌握进度" aria-valuemin="0" aria-valuemax="897" aria-valuenow="0"><i id="word-progress-fill"></i></div><span id="word-progress-count" class="word-progress-count">0 / 897</span></div>
+        <div class="word-actions"><button id="word-next" type="button">换一个</button><button id="word-known" type="button">已掌握</button></div>
       </section>
       </div>
     </section>
 
   </main>
   <div id="toast" role="status" aria-live="polite"></div>
-  <script src="app.js?v=20260924-vocabulary-fortune"></script>
+  <script src="app.js?v=20261027-github-weekly"></script>
 </body>
 </html>

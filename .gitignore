@@ -3,6 +3,7 @@ __pycache__/
 user_data/
 runs/
 assets/bing_daily/
+assets/github_weekly/
 *.log
 .DS_Store
 Thumbs.db
