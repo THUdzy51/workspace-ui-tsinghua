@@ -61,6 +61,54 @@ def _github_search(search_text: str, since: str, per_page: int = 30) -> list[dic
     } for item in (raw.get("items") or []) if item.get("html_url") and item.get("full_name")]
 
 
+def github_summary_zh(item: dict[str, Any]) -> str:
+    """Create a conservative one-sentence Chinese overview from public metadata."""
+    text = f"{item.get('name', '')} {item.get('description', '')}".lower()
+    domains = [
+        (("cesm", "earth system model", "land surface model"), "地球系统与陆面模式研究"),
+        (("permafrost", "frozen soil", "freeze-thaw"), "冻土与土壤冻融研究"),
+        (("hydrology", "hydrologic", "water resources"), "水文与水资源分析"),
+        (("remote sensing", "satellite", "earth observation"), "遥感与地球观测"),
+        (("geospatial", " gis ", "geographic"), "地理空间分析"),
+        (("climate", "meteorology", "weather"), "气候与气象研究"),
+        (("ecology", "ecosystem", "biodiversity"), "生态与生态系统研究"),
+        (("llm", "large language model", "generative ai", " ai agent", "artificial intelligence"), "人工智能与大语言模型应用"),
+        (("machine learning", "deep learning", "neural network"), "机器学习"),
+        (("security", "vulnerability", "malware"), "软件安全"),
+        (("database", "sql", "storage engine"), "数据管理"),
+        (("web", "frontend", "browser"), "Web 开发"),
+        (("photo", "image", "photography"), "图像与摄影处理"),
+        (("terminal", "shell"), "终端与命令行操作"),
+        (("file manager", "filesystem"), "文件管理"),
+        (("game", "gaming"), "游戏开发"),
+    ]
+    domain = next((label for keys, label in domains if any(key in text for key in keys)), "软件开发")
+    kinds = [
+        (("dataset", "data set", "corpus"), "数据集"), (("benchmark", "evaluation"), "评测基准"),
+        (("library", "sdk", "package"), "开发库"), (("framework",), "框架"), (("platform",), "平台"),
+        (("cli", "command line"), "命令行工具"), (("tool", "toolkit", "utility"), "工具"),
+        (("model", "simulation"), "模型与模拟工具"), (("app", "application"), "应用程序"),
+    ]
+    kind = next((label for keys, label in kinds if any(key in text for key in keys)), "开源项目")
+    abilities = []
+    for keys, label in [
+        (("visualization", "visualize", "dashboard"), "数据可视化"), (("forecast", "prediction", "predict"), "预测分析"),
+        (("workflow", "pipeline", "automation"), "流程自动化"), (("analysis", "analytics"), "数据分析"),
+        (("monitor", "observability"), "运行监测"), (("search", "retrieval"), "信息检索"),
+        (("train", "fine-tun"), "模型训练"), (("deploy", "deployment"), "部署与运行"),
+        (("convert", "parser", "extract"), "数据转换与提取"),
+        (("edit", "editor"), "内容编辑"),
+        (("reasoning", "inference"), "模型推理"),
+        (("manage", "management"), "资源管理"),
+    ]:
+        if any(key in text for key in keys) and label not in abilities:
+            abilities.append(label)
+    purpose = "、".join(abilities[:2]) if abilities else f"支持{domain}相关任务"
+    language = str(item.get("language") or "").strip()
+    language_note = f"，以 {language} 为主要语言" if language and language != "多语言" else ""
+    return f"这是一个面向{domain}的{kind}{language_note}，主要用于{purpose}。"
+
+
 def github_weekly_payload() -> dict[str, Any]:
     """Return 8 general and 4 research-related high-star repositories from the last 60 days."""
     today = date.today()
@@ -68,17 +116,19 @@ def github_weekly_payload() -> dict[str, Any]:
     cached = read_json(cache_path, None)
     since = (today - timedelta(days=59)).isoformat()
     source = "github"
-    if not (isinstance(cached, dict) and cached.get("general_candidates") and cached.get("window_days") == 60):
+    if not (isinstance(cached, dict) and cached.get("general_candidates") and cached.get("window_days") == 60 and cached.get("recommendation_version") == 2):
         try:
             general_candidates = _github_search("", since, 40)
             research_by_name: dict[str, dict[str, Any]] = {}
             for term in ("climate", "hydrology", "remote-sensing", "geospatial", "permafrost", "CESM"):
-                for item in _github_search(f"{term} in:name,description,readme", since, 15):
-                    research_by_name[item["full_name"]] = item
+                for item in _github_search(f"{term} in:name,description", since, 15):
+                    metadata = f"{item.get('name', '')} {item.get('description', '')}".lower()
+                    if any(key in metadata for key in ("climate", "hydrolog", "remote sensing", "geospatial", "permafrost", "freeze-thaw", "earth observation", "earth system model", "cesm", "meteorolog", "ecosystem")):
+                        research_by_name[item["full_name"]] = item
             research_candidates = sorted(research_by_name.values(), key=lambda item: item["stars"], reverse=True)
             if not general_candidates:
                 raise ValueError("GitHub returned no repositories")
-            cached = {"day": today.isoformat(), "since": since, "until": today.isoformat(), "window_days": 60, "general_candidates": general_candidates, "research_candidates": research_candidates}
+            cached = {"day": today.isoformat(), "since": since, "until": today.isoformat(), "window_days": 60, "recommendation_version": 2, "general_candidates": general_candidates, "research_candidates": research_candidates}
             GITHUB_CACHE.mkdir(parents=True, exist_ok=True)
             write_json(cache_path, cached)
             for old_path in GITHUB_CACHE.glob("github-weekly-*.json"):
@@ -86,7 +136,7 @@ def github_weekly_payload() -> dict[str, Any]:
                     old_path.unlink(missing_ok=True)
         except Exception:
             previous = sorted(GITHUB_CACHE.glob("github-weekly-*.json"), reverse=True) if GITHUB_CACHE.exists() else []
-            cached = next((value for value in (read_json(path, None) for path in previous) if isinstance(value, dict) and value.get("general_candidates")), None)
+            cached = next((value for value in (read_json(path, None) for path in previous) if isinstance(value, dict) and value.get("general_candidates") and value.get("recommendation_version") == 2), None)
             source = "cache"
     if not cached:
         return {"day": today.isoformat(), "since": since, "until": today.isoformat(), "window_days": 60, "source": "unavailable", "items": []}
@@ -96,8 +146,10 @@ def github_weekly_payload() -> dict[str, Any]:
     research = [item for item in cached.get("research_candidates", []) if item.get("full_name") not in disliked and item.get("full_name") not in general_names][:4]
     for item in general:
         item["recommendation_type"] = "全站热门"
+        item["summary_zh"] = github_summary_zh(item)
     for item in research:
         item["recommendation_type"] = "研究相关"
+        item["summary_zh"] = github_summary_zh(item)
     return {"day": today.isoformat(), "since": cached.get("since", since), "until": today.isoformat(), "window_days": 60, "source": source, "general": general, "research": research, "items": general + research, "feedback_count": len(disliked)}
 
 
