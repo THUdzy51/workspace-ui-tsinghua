@@ -41,9 +41,10 @@ def write_json(path: Path, payload: Any) -> None:
 
 
 def github_feedback_payload() -> dict[str, Any]:
-    payload = read_json(GITHUB_FEEDBACK_PATH, {"version": 1, "not_interested": []}) or {}
-    names = payload.get("not_interested", []) if isinstance(payload, dict) else []
-    return {"version": 1, "not_interested": sorted({str(name) for name in names if name})}
+    payload = read_json(GITHUB_FEEDBACK_PATH, {"version": 1, "not_interested": [], "archived": []}) or {}
+    disliked = payload.get("not_interested", []) if isinstance(payload, dict) else []
+    archived = payload.get("archived", []) if isinstance(payload, dict) else []
+    return {"version": 1, "not_interested": sorted({str(name) for name in disliked if name}), "archived": sorted({str(name) for name in archived if name})}
 
 
 def _github_search(search_text: str, since: str, per_page: int = 30) -> list[dict[str, Any]]:
@@ -59,54 +60,6 @@ def _github_search(search_text: str, since: str, per_page: int = 30) -> list[dic
         "stars": int(item.get("stargazers_count", 0) or 0), "forks": int(item.get("forks_count", 0) or 0),
         "owner": (item.get("owner") or {}).get("login", ""),
     } for item in (raw.get("items") or []) if item.get("html_url") and item.get("full_name")]
-
-
-def github_summary_zh(item: dict[str, Any]) -> str:
-    """Create a conservative one-sentence Chinese overview from public metadata."""
-    text = f"{item.get('name', '')} {item.get('description', '')}".lower()
-    domains = [
-        (("cesm", "earth system model", "land surface model"), "地球系统与陆面模式研究"),
-        (("permafrost", "frozen soil", "freeze-thaw"), "冻土与土壤冻融研究"),
-        (("hydrology", "hydrologic", "water resources"), "水文与水资源分析"),
-        (("remote sensing", "satellite", "earth observation"), "遥感与地球观测"),
-        (("geospatial", " gis ", "geographic"), "地理空间分析"),
-        (("climate", "meteorology", "weather"), "气候与气象研究"),
-        (("ecology", "ecosystem", "biodiversity"), "生态与生态系统研究"),
-        (("llm", "large language model", "generative ai", " ai agent", "artificial intelligence"), "人工智能与大语言模型应用"),
-        (("machine learning", "deep learning", "neural network"), "机器学习"),
-        (("security", "vulnerability", "malware"), "软件安全"),
-        (("database", "sql", "storage engine"), "数据管理"),
-        (("web", "frontend", "browser"), "Web 开发"),
-        (("photo", "image", "photography"), "图像与摄影处理"),
-        (("terminal", "shell"), "终端与命令行操作"),
-        (("file manager", "filesystem"), "文件管理"),
-        (("game", "gaming"), "游戏开发"),
-    ]
-    domain = next((label for keys, label in domains if any(key in text for key in keys)), "软件开发")
-    kinds = [
-        (("dataset", "data set", "corpus"), "数据集"), (("benchmark", "evaluation"), "评测基准"),
-        (("library", "sdk", "package"), "开发库"), (("framework",), "框架"), (("platform",), "平台"),
-        (("cli", "command line"), "命令行工具"), (("tool", "toolkit", "utility"), "工具"),
-        (("model", "simulation"), "模型与模拟工具"), (("app", "application"), "应用程序"),
-    ]
-    kind = next((label for keys, label in kinds if any(key in text for key in keys)), "开源项目")
-    abilities = []
-    for keys, label in [
-        (("visualization", "visualize", "dashboard"), "数据可视化"), (("forecast", "prediction", "predict"), "预测分析"),
-        (("workflow", "pipeline", "automation"), "流程自动化"), (("analysis", "analytics"), "数据分析"),
-        (("monitor", "observability"), "运行监测"), (("search", "retrieval"), "信息检索"),
-        (("train", "fine-tun"), "模型训练"), (("deploy", "deployment"), "部署与运行"),
-        (("convert", "parser", "extract"), "数据转换与提取"),
-        (("edit", "editor"), "内容编辑"),
-        (("reasoning", "inference"), "模型推理"),
-        (("manage", "management"), "资源管理"),
-    ]:
-        if any(key in text for key in keys) and label not in abilities:
-            abilities.append(label)
-    purpose = "、".join(abilities[:2]) if abilities else f"支持{domain}相关任务"
-    language = str(item.get("language") or "").strip()
-    language_note = f"，以 {language} 为主要语言" if language and language != "多语言" else ""
-    return f"这是一个面向{domain}的{kind}{language_note}，主要用于{purpose}。"
 
 
 def github_weekly_payload() -> dict[str, Any]:
@@ -140,17 +93,16 @@ def github_weekly_payload() -> dict[str, Any]:
             source = "cache"
     if not cached:
         return {"day": today.isoformat(), "since": since, "until": today.isoformat(), "window_days": 60, "source": "unavailable", "items": []}
-    disliked = set(github_feedback_payload()["not_interested"])
-    general = [item for item in cached.get("general_candidates", []) if item.get("full_name") not in disliked][:8]
-    general_names = {item.get("full_name") for item in general}
-    research = [item for item in cached.get("research_candidates", []) if item.get("full_name") not in disliked and item.get("full_name") not in general_names][:4]
+    feedback = github_feedback_payload()
+    excluded = set(feedback["not_interested"]) | set(feedback["archived"])
+    research = [item for item in cached.get("research_candidates", []) if item.get("full_name") not in excluded][:4]
+    research_names = {item.get("full_name") for item in research}
+    general = [item for item in cached.get("general_candidates", []) if item.get("full_name") not in excluded and item.get("full_name") not in research_names][:8]
     for item in general:
         item["recommendation_type"] = "全站热门"
-        item["summary_zh"] = github_summary_zh(item)
     for item in research:
         item["recommendation_type"] = "研究相关"
-        item["summary_zh"] = github_summary_zh(item)
-    return {"day": today.isoformat(), "since": cached.get("since", since), "until": today.isoformat(), "window_days": 60, "source": source, "general": general, "research": research, "items": general + research, "feedback_count": len(disliked)}
+    return {"day": today.isoformat(), "since": cached.get("since", since), "until": today.isoformat(), "window_days": 60, "source": source, "general": general, "research": research, "items": research + general, "not_interested_count": len(feedback["not_interested"]), "archived_count": len(feedback["archived"])}
 
 
 def schedule_payload() -> dict[str, Any]:
@@ -287,10 +239,16 @@ class Handler(SimpleHTTPRequestHandler):
             with DATA_LOCK:
                 if path == "/api/github-feedback":
                     full_name = str(body.get("full_name", "")).strip()
+                    action = str(body.get("action", "not_interested"))
                     if not full_name or "/" not in full_name or len(full_name) > 200:
                         raise ValueError("无效的 GitHub 仓库名称。")
+                    if action not in ("not_interested", "archive"):
+                        raise ValueError("未知的 GitHub 反馈操作。")
                     payload = github_feedback_payload()
-                    payload["not_interested"] = sorted(set(payload["not_interested"]) | {full_name})
+                    target = "archived" if action == "archive" else "not_interested"
+                    other = "not_interested" if target == "archived" else "archived"
+                    payload[target] = sorted(set(payload[target]) | {full_name})
+                    payload[other] = sorted(set(payload[other]) - {full_name})
                     payload["updated_at"] = datetime.now().astimezone().isoformat(timespec="seconds")
                     write_json(GITHUB_FEEDBACK_PATH, payload)
                     self.send_json(github_weekly_payload())
