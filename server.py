@@ -40,13 +40,13 @@ def write_json(path: Path, payload: Any) -> None:
 
 
 def github_weekly_payload() -> dict[str, Any]:
-    """Return popular public repositories created in the last seven days."""
+    """Return popular public repositories created in the last 30 days."""
     today = date.today()
     cache_path = GITHUB_CACHE / f"github-weekly-{today.isoformat()}.json"
     cached = read_json(cache_path, None)
-    if isinstance(cached, dict) and cached.get("items"):
+    if isinstance(cached, dict) and cached.get("items") and cached.get("window_days") == 30:
         return cached
-    since = (today - timedelta(days=6)).isoformat()
+    since = (today - timedelta(days=29)).isoformat()
     query = urlencode({"q": f"created:>={since} stars:>5", "sort": "stars", "order": "desc", "per_page": 12})
     try:
         request = Request(f"https://api.github.com/search/repositories?{query}", headers={"Accept": "application/vnd.github+json", "User-Agent": "Portable-Workspace/1.0", "X-GitHub-Api-Version": "2022-11-28"})
@@ -61,7 +61,7 @@ def github_weekly_payload() -> dict[str, Any]:
         } for item in (raw.get("items") or []) if item.get("html_url")]
         if not items:
             raise ValueError("GitHub returned no repositories")
-        payload = {"day": today.isoformat(), "since": since, "source": "github", "items": items}
+        payload = {"day": today.isoformat(), "since": since, "window_days": 30, "source": "github", "items": items}
         GITHUB_CACHE.mkdir(parents=True, exist_ok=True)
         write_json(cache_path, payload)
         for old_path in GITHUB_CACHE.glob("github-weekly-*.json"):
