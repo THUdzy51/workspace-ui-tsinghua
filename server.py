@@ -20,6 +20,7 @@ USER_DATA = ROOT / "user_data"
 SCHEDULE_PATH = USER_DATA / "schedule.json"
 TODO_PATH = USER_DATA / "todos.json"
 HYDRATION_PATH = USER_DATA / "hydration.json"
+GITHUB_FEEDBACK_PATH = USER_DATA / "github_feedback.json"
 BING_CACHE = ROOT / "assets" / "bing_daily"
 GITHUB_CACHE = ROOT / "assets" / "github_weekly"
 DATA_LOCK = threading.Lock()
@@ -39,41 +40,65 @@ def write_json(path: Path, payload: Any) -> None:
     temporary.replace(path)
 
 
+def github_feedback_payload() -> dict[str, Any]:
+    payload = read_json(GITHUB_FEEDBACK_PATH, {"version": 1, "not_interested": []}) or {}
+    names = payload.get("not_interested", []) if isinstance(payload, dict) else []
+    return {"version": 1, "not_interested": sorted({str(name) for name in names if name})}
+
+
+def _github_search(search_text: str, since: str, per_page: int = 30) -> list[dict[str, Any]]:
+    qualifiers = f"created:>={since} stars:>5"
+    query = urlencode({"q": f"{search_text} {qualifiers}".strip(), "sort": "stars", "order": "desc", "per_page": per_page})
+    request = Request(f"https://api.github.com/search/repositories?{query}", headers={"Accept": "application/vnd.github+json", "User-Agent": "Portable-Workspace/1.0", "X-GitHub-Api-Version": "2022-11-28"})
+    with urlopen(request, timeout=10) as response:
+        raw = json.loads(response.read().decode("utf-8"))
+    return [{
+        "name": item.get("name", ""), "full_name": item.get("full_name", ""),
+        "description": item.get("description") or "这个项目暂时没有简介。",
+        "url": item.get("html_url", ""), "language": item.get("language") or "多语言",
+        "stars": int(item.get("stargazers_count", 0) or 0), "forks": int(item.get("forks_count", 0) or 0),
+        "owner": (item.get("owner") or {}).get("login", ""),
+    } for item in (raw.get("items") or []) if item.get("html_url") and item.get("full_name")]
+
+
 def github_weekly_payload() -> dict[str, Any]:
-    """Return popular public repositories created in the last 30 days."""
+    """Return 8 general and 4 research-related high-star repositories from the last 60 days."""
     today = date.today()
     cache_path = GITHUB_CACHE / f"github-weekly-{today.isoformat()}.json"
     cached = read_json(cache_path, None)
-    if isinstance(cached, dict) and cached.get("items") and cached.get("window_days") == 30:
-        return cached
-    since = (today - timedelta(days=29)).isoformat()
-    query = urlencode({"q": f"created:>={since} stars:>5", "sort": "stars", "order": "desc", "per_page": 12})
-    try:
-        request = Request(f"https://api.github.com/search/repositories?{query}", headers={"Accept": "application/vnd.github+json", "User-Agent": "Portable-Workspace/1.0", "X-GitHub-Api-Version": "2022-11-28"})
-        with urlopen(request, timeout=8) as response:
-            raw = json.loads(response.read().decode("utf-8"))
-        items = [{
-            "name": item.get("name", ""), "full_name": item.get("full_name", ""),
-            "description": item.get("description") or "这个项目暂时没有简介。",
-            "url": item.get("html_url", ""), "language": item.get("language") or "多语言",
-            "stars": int(item.get("stargazers_count", 0) or 0), "forks": int(item.get("forks_count", 0) or 0),
-            "owner": (item.get("owner") or {}).get("login", ""),
-        } for item in (raw.get("items") or []) if item.get("html_url")]
-        if not items:
-            raise ValueError("GitHub returned no repositories")
-        payload = {"day": today.isoformat(), "since": since, "window_days": 30, "source": "github", "items": items}
-        GITHUB_CACHE.mkdir(parents=True, exist_ok=True)
-        write_json(cache_path, payload)
-        for old_path in GITHUB_CACHE.glob("github-weekly-*.json"):
-            if old_path != cache_path:
-                old_path.unlink(missing_ok=True)
-        return payload
-    except Exception:
-        previous = sorted(GITHUB_CACHE.glob("github-weekly-*.json"), reverse=True) if GITHUB_CACHE.exists() else []
-        fallback = read_json(previous[0], None) if previous else None
-        if isinstance(fallback, dict) and fallback.get("items"):
-            return {**fallback, "source": "cache"}
-        return {"day": today.isoformat(), "since": since, "source": "unavailable", "items": []}
+    since = (today - timedelta(days=59)).isoformat()
+    source = "github"
+    if not (isinstance(cached, dict) and cached.get("general_candidates") and cached.get("window_days") == 60):
+        try:
+            general_candidates = _github_search("", since, 40)
+            research_by_name: dict[str, dict[str, Any]] = {}
+            for term in ("climate", "hydrology", "remote-sensing", "geospatial", "permafrost", "CESM"):
+                for item in _github_search(f"{term} in:name,description,readme", since, 15):
+                    research_by_name[item["full_name"]] = item
+            research_candidates = sorted(research_by_name.values(), key=lambda item: item["stars"], reverse=True)
+            if not general_candidates:
+                raise ValueError("GitHub returned no repositories")
+            cached = {"day": today.isoformat(), "since": since, "until": today.isoformat(), "window_days": 60, "general_candidates": general_candidates, "research_candidates": research_candidates}
+            GITHUB_CACHE.mkdir(parents=True, exist_ok=True)
+            write_json(cache_path, cached)
+            for old_path in GITHUB_CACHE.glob("github-weekly-*.json"):
+                if old_path != cache_path:
+                    old_path.unlink(missing_ok=True)
+        except Exception:
+            previous = sorted(GITHUB_CACHE.glob("github-weekly-*.json"), reverse=True) if GITHUB_CACHE.exists() else []
+            cached = next((value for value in (read_json(path, None) for path in previous) if isinstance(value, dict) and value.get("general_candidates")), None)
+            source = "cache"
+    if not cached:
+        return {"day": today.isoformat(), "since": since, "until": today.isoformat(), "window_days": 60, "source": "unavailable", "items": []}
+    disliked = set(github_feedback_payload()["not_interested"])
+    general = [item for item in cached.get("general_candidates", []) if item.get("full_name") not in disliked][:8]
+    general_names = {item.get("full_name") for item in general}
+    research = [item for item in cached.get("research_candidates", []) if item.get("full_name") not in disliked and item.get("full_name") not in general_names][:4]
+    for item in general:
+        item["recommendation_type"] = "全站热门"
+    for item in research:
+        item["recommendation_type"] = "研究相关"
+    return {"day": today.isoformat(), "since": cached.get("since", since), "until": today.isoformat(), "window_days": 60, "source": source, "general": general, "research": research, "items": general + research, "feedback_count": len(disliked)}
 
 
 def schedule_payload() -> dict[str, Any]:
@@ -196,6 +221,7 @@ class Handler(SimpleHTTPRequestHandler):
             "/api/bing-background": bing_background_payload,
             "/api/weather": weather_payload,
             "/api/github-weekly": github_weekly_payload,
+            "/api/github-feedback": github_feedback_payload,
         }
         if path in routes:
             self.send_json(routes[path]())
@@ -207,6 +233,16 @@ class Handler(SimpleHTTPRequestHandler):
             path = urlparse(self.path).path
             body = self.read_body()
             with DATA_LOCK:
+                if path == "/api/github-feedback":
+                    full_name = str(body.get("full_name", "")).strip()
+                    if not full_name or "/" not in full_name or len(full_name) > 200:
+                        raise ValueError("无效的 GitHub 仓库名称。")
+                    payload = github_feedback_payload()
+                    payload["not_interested"] = sorted(set(payload["not_interested"]) | {full_name})
+                    payload["updated_at"] = datetime.now().astimezone().isoformat(timespec="seconds")
+                    write_json(GITHUB_FEEDBACK_PATH, payload)
+                    self.send_json(github_weekly_payload())
+                    return
                 if path == "/api/schedule":
                     payload = schedule_payload()
                     payload["events"].append({
